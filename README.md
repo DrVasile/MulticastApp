@@ -81,13 +81,10 @@ The requests are processed in execute method :
 ~~~
 
 
-2. **Server** - The class which makes the connection for the server. It has the list of the running threads and a list for the stored messages :
+2. **Server** - The class which makes the connection for the server. It has the following fields : 
 
 ~~~
-private static final int port = 59898;
-private static final ECHOServer instance = new ECHOServer();
-private static List<ClientThread> threadList = new ArrayList<>();
-private static List<String> messageList = new ArrayList<>();
+
 ~~~
 
 The connection : 
