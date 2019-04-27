@@ -9,7 +9,7 @@ public class Server {
 
     public static void main(String[] args) throws IOException {
         DatagramSocket socket = new DatagramSocket(port);
-        System.err.println("Started server on port " + port);
+        System.out.println("Started server on port " + port);
 
         while (true) {
             DatagramPacket packet = new DatagramPacket(bytes, bytes.length);

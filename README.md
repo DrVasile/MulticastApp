@@ -81,122 +81,73 @@ The requests are processed in execute method :
 ~~~
 
 
-2. **Server** - The class which makes the connection for the server. It has the following fields : 
+2. **Server** - The class which makes the connection for the server. It creates a socket on the associated port,
+after it listens for packets which then it sends back to the clients : 
 
 ~~~
+DatagramSocket socket = new DatagramSocket(port);
+System.out.println("Started server on port " + port);
 
-~~~
+while (true) {
+    DatagramPacket packet = new DatagramPacket(bytes, bytes.length);
+    socket.receive(packet);
+    InetAddress address = packet.getAddress();
+    int port = packet.getPort();
+    packet = new DatagramPacket(bytes, bytes.length, address, port);
+    String received = new String(packet.getData(), 0, packet.getLength());
+    socket.send(packet);
+    System.out.println("Received : " + received);
 
-The connection : 
-
-~~~
-try (var listener = new ServerSocket(port)) {
-    System.out.println("The server is running on port " + port + "...");
-    while (true) {
-        var client = listener.accept();
-        ClientThread thread = new ClientThread(client);
-        thread.start();
+    if (received.equals("exit")) {
+        break;
     }
 }
+
+socket.close();
 ~~~
 
-Below are declared the coresponding methods for the commands e.g. here's the method for adding a message : 
+3. **Receiver** - A class which extends Thread class and it is the blueprint of the thread which receives
+the messages for a specific client. It is done in the method run : 
 
 ~~~
-void addMessage(String message) {
-    synchronized (this) {
-        messageList.add(message);
+MulticastSocket socket = new MulticastSocket(Client.port);
+InetAddress inetAddress = InetAddress.getByName(Client.host);
+socket.joinGroup(inetAddress);
+System.out.println("Joined the at " + inetAddress);
+
+while(true) {
+    DatagramPacket packet = new DatagramPacket(bytes, bytes.length);
+    socket.receive(packet);
+    String received = new String(packet.getData(), 0, packet.getLength());
+    System.out.println("Received message : " + received);
+    if (received.equals("leave")) {
+        break;
     }
 }
+
+System.out.println("Left group!");
+socket.leaveGroup(inetAddress);
+socket.close();
 ~~~
 
-They are synchronized so that we could have concurrent processing.
+At the beginning of the method the client joins the group and leaveas when the message 
+leave was introduced.
 
-
-3. **ClientThread** - A class which extends Thread class and it is the blueprint of the threads created by the server. In the run method we add in the list the thread, passes the request to the Dispatcher and then removes the thread : 
+4. **User** - A class used for testing purposes. In it I create a client instance.
+Then I read the introduced commands and send them to the execute method : 
 
 ~~~
-public void run() {
-    try {
-        DataInputStream in = new DataInputStream(socket.getInputStream());
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        System.out.println("New Client Thread has been created!");
+Client client = new Client();
+BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 
-        ECHOServer.getInstance().addClientThread(this);
-
-        while (true) {
-            String line = in.readUTF();
-            if (line.equals("exit")) {
-                break;
-            }
-
-            System.out.println(this.getName() + " wrote : " + line);
-            Dispatcher.processMessage(out, line);
-        }
-
-        ECHOServer.getInstance().removeClientThread(this);
-        socket.close();
-    } catch (IOException e1) {
-        e1.printStackTrace();
-    }
+while(client.closed()){
+    String lineInput = bufferedReader.readLine();
+    String answer = client.execute(lineInput);
+    System.out.println(answer);
 }
-~~~
-
-
-4. **Dispatcher** - a final class with a static method which converts our request into 2 components, the message and command and then by a switch statement it computes a response which is written in the output stream of the client : 
-
-~~~
-request = request.trim();
-
-String response = request + "\n";
-String command;
-String message;
-
-if (request.contains(" ")) {
-    command = request.substring(0, request.indexOf(" "));
-    message = request.substring(request.indexOf(" ") + 1);
-} else {
-    command = request;
-    message = "";
-}
-
-switch (command){
-    case "help":
-        response += "help - available commands :\n" +
-                    "about - display some text about the system\n" +
-                    "threads - display number of active threads\n" +
-                    "time - display the current time on server\n" +
-                    "add String - adds a message in the list\n" +
-                    "rem String - removes a message from the list\n" +
-                    "print-msg - prints all the messages\n";
-        break;
-
-    case "about":
-        response += "Client Server App\n Author : Wazea\n";
-        break;
-
-    case "threads":
-        response += "Total active threads on the server: " + ECHOServer.getInstance().getThreadCount();
-        break;
-
-    case "time":
-        response += "Current server time: " + new Date().toString();
-        break;
-
-    case "add":
-        ECHOServer.getInstance().addMessage(message);
-        response += "Your message has been saved on the server!";
-        break;
-
-    case "print-msg":
-        response += ECHOServer.getInstance().getMessages();
-        break;
-}
-
-out.writeUTF(response);
 ~~~
 
 ## Screenshot
 
-![](img/Capture1.PNG)
+![](img/Capture.PNG)
 
