@@ -149,5 +149,5 @@ while(client.closed()){
 
 ## Screenshot
 
-![](img/Capture1.PNG)
+![](Capture1.PNG)
 
